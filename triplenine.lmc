@@ -1,0 +1,13 @@
+INP
+STA value1
+while LDA value1
+BRZ endwhile
+SUB count
+STA value1
+LDA nineninenine
+OUT
+BRA while
+endwhile HLT
+value1 DAT
+count DAT 1
+nineninenine DAT 999

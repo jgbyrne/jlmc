@@ -152,7 +152,10 @@ class Exec:
         elif op == Op.IO:
             if xx == 1:
                 self.neg = False
-                self.acc, _ = curtail(int(input()))
+                try:
+                    self.acc, _ = curtail(int(input()))
+                except EOFError:
+                    return False
             elif xx == 2:
                 print(self.acc)
 
@@ -160,58 +163,6 @@ class Exec:
             return False
 
         return True
-
-trig = Exec([901, 323, 526, 324, 325, 524, 223, 814, 525, 127, 325, 124, 324, 605, 523, 224, 720, 526, 902, 622, 525, 902, 000, 000, 000, 000, 000, 1])
-
-#while trig.cycle():
-#    pass
-
-square = """
-START   LDA ZERO     // Initialize for multiple program run
-        STA RESULT
-        STA COUNT
-        INP          // User provided input
-        BRZ END      // Branch to program END if input = 0
-        STA VALUE    #  Store input as VALUE
-LOOP    LDA RESULT   ;  Load the RESULT
-        ADD VALUE    // Add VALUE, the user provided input, to RESULT
-        STA RESULT   // Store the new RESULT
-        LDA COUNT    // Load the COUNT
-        ADD ONE      // Add ONE to the COUNT
-        STA COUNT    // Store the new COUNT
-        SUB VALUE    // Subtract the user provided input VALUE from COUNT
-        BRZ ENDLOOP  // If zero (VALUE has been added to RESULT by VALUE times), branch to ENDLOOP
-        BRA LOOP     // Branch to LOOP to continue adding VALUE to RESULT
-ENDLOOP LDA RESULT   // Load RESULT
-        OUT          // Output RESULT
-        BRA START    // Branch to the START to initialize and get another input VALUE
-END     HLT          // HALT - a zero was entered so done!
-RESULT  DAT          // Computed result (defaults to 0)
-COUNT   DAT          // Counter (defaults to 0)
-ONE     DAT 1        // Constant, value of 1
-VALUE   DAT          // User provided input, the value to be squared (defaults to 0)
-ZERO    DAT          // Constant, value of 0 (defaults to 0)
-"""
-
-#gcse = """
-#INP
-#STA value1
-#while LDA value1
-#BRZ endwhile
-#SUB count
-#STA value1
-#LDA nineninenine
-#OUT
-#BRA while
-#endwhile HLT
-#value1 DAT
-#count DAT 1
-#nineninenine DAT 999
-#"""
-
-ex = Exec(Assembler(square).mem)
-
-#while ex.cycle(): pass
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
