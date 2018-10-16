@@ -1,5 +1,7 @@
 from enum import Enum
 import re
+import sys
+
 
 class Op(Enum):
     ADD = 1
@@ -209,5 +211,18 @@ ZERO    DAT          // Constant, value of 0 (defaults to 0)
 
 ex = Exec(Assembler(square).mem)
 
-while ex.cycle(): pass
+#while ex.cycle(): pass
 
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        a1 = sys.argv[1]
+        if a1 == "--":
+            inp = sys.stdin.read()
+            print(inp)
+            sys.stdin = open("/dev/tty")
+            ex = Exec(Assembler(inp).mem)
+        else:
+            with open(sys.argv[1]) as prog:
+                ex = Exec(Assembler(prog.read()).mem)
+    while ex.cycle():
+        pass
