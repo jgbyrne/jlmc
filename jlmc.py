@@ -43,15 +43,22 @@ def lookup(op):
 
 class Assembler:
     comments = re.compile(".*((;|//|#).*)")
+
     def write_op(self, tok):
-        self.mem[self.ptr] += lookup(tok)
+        val = lookup(tok)
+        if val is not None:
+            self.mem[self.ptr] += lookup(tok)
+        else:
+            print("Encountered Bad Token: {}".format(tok))
+            sys.exit(1)
 
     def write_val(self, val):
         try:
             if 0 <= int(val) < (100 if self.mem[self.ptr] else 1000):
                 self.mem[self.ptr] += int(val)
             else:
-                pass #BORK
+                print("Bad numerical value: {}".format(val))
+                sys.exit(1)
         except ValueError:
             if val in self.symbols:
                 self.mem[self.ptr] += self.symbols[val]
@@ -60,7 +67,8 @@ class Assembler:
 
     def write_label(self, tok):
         if tok in self.symbols:
-            return #BORK
+            print("Encountered same label twice: {}".format(tok))
+            sys.exit(1)
         self.symbols[tok] = self.ptr
 
     def __init__(self, lines):
@@ -222,6 +230,10 @@ if __name__ == "__main__":
         else:
             with open(sys.argv[1]) as prog:
                 ex = Exec(Assembler(prog.read()).mem)
+
+    else:
+        print("JLMC needs either a program file as an argument, or the argument '--' and a progam on stdin")
+        sys.exit(1)
 
     if "--debug" in sys.argv:
         breaks  = []
