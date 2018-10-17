@@ -1,3 +1,6 @@
+; Takes an input number, prints `999` that many times
+; Taken from gcsecomputing.org.uk
+
 INP
 STA value1
 while LDA value1

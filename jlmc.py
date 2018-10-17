@@ -104,24 +104,67 @@ def curtail(n):
 
 
 class Exec:
+    HALT    = 0
+    SUCCESS = 2
+    OUTPUT  = 3
+    INPUT   = 4
+
     def __init__(self, prog):
         self.memory = [000] * 100
         for i, d in enumerate(prog):
             self.memory[i] = d
-        self.outbox = 000
-        self.inbox  = 000
-        self.pc     = 000
-        self.acc    = 000
-        self.neg    = False
+        self.begun   = False
+        self.inputs  = []
+        self.outputs = []
+        self.outbox  = 000
+        self.inbox   = 000
+        self.pc      = 000
+        self.ip      = 000
+        self.acc     = 000
+        self.neg     = False
         #print(self.memory)
 
-    def cycle(self):
-        ip = self.pc
-        ir = self.memory[ip]
+    def __str__(self):
+        s = "+-" * 40 + "\n"
+        s += " " * 14
+        s += "   IP  {:02d}      PC  {:02d}  ACC {:03d}\n".format(self.ip, self.pc, self.acc)
+        s += " " * 14
+        s += "INBOX {:03d}  OUTBOX {:03d}  NEG {}\n\n ".format(self.inbox, self.outbox, self.neg)
+        s += "      0    1    2    3    4    5    6    7    8    9\n"
+        op = Op(self.memory[self.ip] // 100)
+        if op in (Op.ADD, Op.SUB, Op.STA, Op.LDA, Op.BRA, Op.BRZ, Op.BRP):
+            target = self.memory[self.ip] % 100
+        else:
+            target = 100
+        for a in range(10):
+            s += "  {}   ".format(a)
+            for b in range(10):
+                addr = (10 * a) + b
+                if addr == self.ip:
+                    s = s[:-1]
+                    s += "{{{:03d}}} ".format(self.memory[addr])
+                elif addr == target:
+                    s = s[:-1]
+                    s += ">{:03d}< ".format(self.memory[addr])
+                else:
+                    s += "{:03d}  ".format(self.memory[addr])
+            s += "\n"
+
+        if not self.begun:
+            s += "\n  Program Loaded\n"
+        else:
+            s += "\n  Concluded Operation: {:03d} ({})\n".format(self.memory[self.ip],
+                                                       Op(self.memory[self.ip] // 100).name)
+        s += "-+" * 40
+        return s
+
+    def cycle(self, inp = None):
+        if not self.begun: self.begun = True
+        self.ip = self.pc
+        ir = self.memory[self.ip]
         self.pc += 1
         op = Op(ir // 100)
         xx = ir - (op.value * 100)
-
 
         if op == Op.ADD:
             self.neg = False
@@ -152,28 +195,145 @@ class Exec:
         elif op == Op.IO:
             if xx == 1:
                 self.neg = False
-                try:
-                    self.acc, _ = curtail(int(input()))
-                except EOFError:
-                    return False
+                self.acc, _ = curtail(inp)
+                self.inbox = self.acc
+                self.inputs.append(self.acc)
+                return Exec.INPUT
             elif xx == 2:
-                print(self.acc)
-
+                self.outbox = self.acc
+                self.outputs.append(self.outbox)
+                return Exec.OUTPUT
         elif op == Op.HLT:
-            return False
+            return Exec.HALT
 
-        return True
+        return Exec.SUCCESS
+
+    def needs_input(self):
+        return self.memory[self.pc] == 901
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         a1 = sys.argv[1]
         if a1 == "--":
             inp = sys.stdin.read()
-            print(inp)
+            # Ugly hack to take user input after previously reading stdin
             sys.stdin = open("/dev/tty")
             ex = Exec(Assembler(inp).mem)
         else:
             with open(sys.argv[1]) as prog:
                 ex = Exec(Assembler(prog.read()).mem)
-    while ex.cycle():
-        pass
+
+    if "--debug" in sys.argv:
+        breaks  = []
+        run     = "--run" in sys.argv
+        ahdr = ["", " " * 22 + "JLMC Debugger"] + [""] * 3 + ["    Inputs     Outputs", "    ------     -------"]
+        inp  = None
+        first = True
+        while True:
+            if not first:
+                if ex.needs_input():
+                    if inp is None:
+                        print("Halting - No Input Given")
+                        sys.exit(1)
+                    try:
+                        code = ex.cycle(inp = int(inp))
+                    except (EOFError, ValueError, KeyboardInterrupt):
+                        print("Halting - Bad Input Value")
+                        sys.exit(1)
+                    else:
+                        inp = None
+                else:
+                    code = ex.cycle()
+            else:
+                first = False
+                code  = Exec.SUCCESS
+            print()
+            appends = [] + ahdr
+            for i in range(1, 8):
+                ln = []
+                ln.append("    {:03d}".format(ex.inputs[-i]) if i <= len(ex.inputs) else "       ")
+                if code == Exec.INPUT and i == 1:
+                    ln.append(" <      ")
+                else:
+                    ln.append("        ")
+                ln.append("{:03d}".format(ex.outputs[-i]) if i <= len(ex.outputs) else "   ")
+                if code == Exec.OUTPUT and i == 1:
+                    ln.append(" <  ")
+                else:
+                    ln.append("    ")
+                appends.append("".join(ln))
+            if inp is not None:
+                appends.append("    Next Input: {}".format(inp))
+            else:
+                appends.append("")
+
+            notices = []
+            if ex.ip in breaks:
+                notices.append("Hit Breakpoint (IP is {:02d})".format(ex.ip))
+            if ex.needs_input() and inp is None:
+                notices.append("Next instruction requires Input")
+            appends.append("  " + ", ".join(notices))
+
+
+            s = str(ex).split("\n")
+            for i, a in enumerate(appends):
+                s[i] += str(a)
+            print("\n".join(s))
+
+            while True:
+                try:
+                    comargs = []
+                    await_inp = ex.needs_input() and inp is None
+                    if not run or ex.ip in breaks or await_inp:
+                        command = input("$ ")
+                        comargs = command.split()
+                    if comargs:
+                        comargs[0] = comargs[0].lower()
+                        if comargs[0] == "breakpoint":
+                            if len(comargs) > 1:
+                                try:
+                                    addr = int(comargs[1])
+                                except ValueError:
+                                    print("Unintelligable")
+                                else:
+                                    breaks.append(addr)
+                                    print("Added Breakpoint")
+                        elif comargs[0] == "delpoint":
+                            if len(comargs) > 1:
+                                try:
+                                    addr = int(comargs[1])
+                                except ValueError:
+                                    print("Unintelligable")
+                                else:
+                                    if addr in breaks:
+                                        breaks.remove(addr)
+                                        print("Removed Breakpoint")
+                        elif comargs[0] in ("input", "inp", "i"):
+                            if len(comargs) > 1:
+                                inp = comargs[1]
+                        elif comargs[0] == "run":
+                            run = True
+                        elif comargs[0] == "step":
+                            run = False
+                        continue
+                    elif not await_inp:
+                        break
+                except (EOFError, KeyboardInterrupt):
+                    print("Halting")
+                    sys.exit(1)
+            if not code:
+                break
+
+    else:
+        while True:
+            if ex.needs_input():
+                try:
+                    code = ex.cycle(inp = int(input()))
+                except (EOFError, ValueError, KeyboardInterrupt):
+                    sys.exit(1)
+            else:
+                code = ex.cycle()
+            if not code: break
+            if code == Exec.OUTPUT:
+                print(ex.outbox)
+
