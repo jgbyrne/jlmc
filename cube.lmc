@@ -1,0 +1,49 @@
+ZERO    BRA   CUBE
+
+; Cube
+CUBE  INP
+      BRZ   HALT
+      STA   X
+      STA   MULA
+      STA   MULB
+      LDA   R1A   ; RET1
+      STA   MULR
+      BRA   MUL
+RET1  STA   MULA
+      LDA   X
+      STA   MULB
+      LDA   R2A   ; RET2
+      STA   MULR
+      BRA   MUL
+RET2  OUT
+      BRA   CUBE
+X     DAT
+R1A   DAT 9
+R2A   DAT 15
+
+; Multiply
+MULR  DAT
+MULA  DAT
+MULB  DAT
+SUM   DAT 0
+MUL   LDA NUM_ZERO
+      STA SUM
+MLOOP LDA SUM
+      ADD MULB
+      STA SUM
+      LDA MULA
+      SUB NUM_ONE
+      BRZ END
+      STA MULA
+      BRA MLOOP
+END   LDA NUM_6HD
+      ADD MULR
+      STA EXIT
+      LDA SUM
+EXIT  BRA ZERO ; Modified to branch to address in MULR
+
+NUM_ONE  DAT 1
+NUM_6HD  DAT 600
+NUM_ZERO DAT 0
+
+HALT HLT

@@ -117,10 +117,11 @@ class Exec:
     OUTPUT  = 3
     INPUT   = 4
 
-    def __init__(self, prog):
+    def __init__(self, prog, symbols={}):
         self.memory = [000] * 100
         for i, d in enumerate(prog):
             self.memory[i] = d
+        self.symbols = symbols
         self.begun   = False
         self.inputs  = []
         self.outputs = []
@@ -229,8 +230,8 @@ if __name__ == "__main__":
             ex = Exec(Assembler(inp).mem)
         else:
             with open(sys.argv[1]) as prog:
-                ex = Exec(Assembler(prog.read()).mem)
-
+                asm = Assembler(prog.read())
+                ex = Exec(asm.mem, symbols=asm.symbols)
     else:
         print("JLMC needs either a program file as an argument, or the argument '--' and a progam on stdin")
         sys.exit(1)
@@ -306,20 +307,28 @@ if __name__ == "__main__":
                                 try:
                                     addr = int(comargs[1])
                                 except ValueError:
-                                    print("Unintelligable")
-                                else:
-                                    breaks.append(addr)
-                                    print("Added Breakpoint")
+                                    if comargs[1] in ex.symbols:
+                                        addr = ex.symbols[comargs[1]]
+                                    else:
+                                        print("No such symbol")
+                                        continue
+                                breaks.append(addr)
+                                print("Added Breakpoint")
                         elif comargs[0] == "delpoint":
                             if len(comargs) > 1:
                                 try:
                                     addr = int(comargs[1])
                                 except ValueError:
-                                    print("Unintelligable")
-                                else:
-                                    if addr in breaks:
-                                        breaks.remove(addr)
-                                        print("Removed Breakpoint")
+                                    if comargs[1] in ex.symbols:
+                                        addr = ex.symbols[comargs[1]]
+                                    else:
+                                        print("No such symbol")
+                                        continue
+                                if addr in breaks:
+                                    breaks.remove(addr)
+                                    print("Removed Breakpoint")
+                        elif comargs[0] == "listpoints":
+                            print(", ".join(str(b) for b in breaks))
                         elif comargs[0] in ("input", "inp", "i"):
                             if len(comargs) > 1:
                                 inp = comargs[1]
@@ -327,7 +336,6 @@ if __name__ == "__main__":
                             run = True
                         elif comargs[0] == "step":
                             run = False
-                        continue
                     elif not await_inp:
                         break
                 except (EOFError, KeyboardInterrupt):
