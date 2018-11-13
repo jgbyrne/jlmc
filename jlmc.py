@@ -105,7 +105,7 @@ class Assembler:
 
 def curtail(n):
     if n > 999:
-        return (999, False)
+        return (n % 1000, False)
     elif n < 0:
         return (0, True)
     return (n, False)
@@ -183,10 +183,10 @@ class Exec:
             self.acc, self.neg = curtail(self.acc - self.memory[xx])
 
         elif op == Op.STA:
-            self.neg = False
             self.memory[xx] = self.acc
 
         elif op == Op.LDA:
+            self.neg = False
             self.acc = self.memory[xx]
 
         elif op == Op.BRA:
@@ -336,6 +336,11 @@ if __name__ == "__main__":
                             run = True
                         elif comargs[0] == "step":
                             run = False
+                        elif comargs[0] == "reset":
+                            ex.pc = 0
+                            continue
+                        elif comargs[0] == "coredump":
+                            print(" ".join(str(m) for m in ex.memory))
                     elif not await_inp:
                         break
                 except (EOFError, KeyboardInterrupt):
