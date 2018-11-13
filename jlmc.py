@@ -19,25 +19,21 @@ def lookup(op):
         return 100
     if op == "SUB":
         return 200
-    if op == "STA":
+    if op == "STA" or op == "STO":
         return 300
     if op == "LDA":
         return 500
-    if op == "BRA":
+    if op == "BRA" or op == "BR":
         return 600
     if op == "BRZ":
         return 700
     if op == "BRP":
         return 800
-    if op == "INP":
+    if op == "INP" or op == "IN":
         return 901
     if op == "OUT":
         return 902
-    if op == "HLT":
-        return 000
-    if op == "COB":
-        return 000
-    if op == "DAT":
+    if op == "HLT" or op == "COB" or op == "DAT":
         return 000
     return None
 
@@ -107,7 +103,7 @@ def curtail(n):
     if n > 999:
         return (n % 1000, False)
     elif n < 0:
-        return (0, True)
+        return (1000 + n, True)
     return (n, False)
 
 
